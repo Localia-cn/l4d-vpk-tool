@@ -26,20 +26,16 @@ class VPKConflictChecker:
         """读取官方VPK文件并记录需要监控的文件路径"""
         print("--------------------------------------------------------------")
         print(f"扫描官方VPK: {vpk_path}")
-        try:
-            package = vpk.open(vpk_path, path_enc=None)
-            new_files = []
+        package = vpk.open(vpk_path, path_enc=None)
+        new_files = []
 
-            for file_path in package:
-                if file_path not in self.official_files and self.should_file_check(file_path):
-                    self.official_files.add(file_path)
-                    new_files.append(file_path)
-                    print(f"\t{file_path}")
-            print(f"\t发现 {len(new_files)} 个需要监控的新文件")
+        for file_path in package:
+            if file_path not in self.official_files and self.should_file_check(file_path):
+                self.official_files.add(file_path)
+                new_files.append(file_path)
+                print(f"\t{file_path}")
+        print(f"\t发现 {len(new_files)} 个需要监控的新文件")
 
-        except Exception as e:
-            print(f"读取VPK失败: {vpk_path}\n错误信息: {str(e)}")
-            traceback.print_exc()
 
     def scan_official_vpk_dir(self, search_root: str):
         """扫描官方VPK目录结构"""
@@ -61,22 +57,17 @@ class VPKConflictChecker:
         print(f"> 正在检查: {os.path.basename(vpk_path)}")
         self.total_addons += 1
         conflicts = 0
+        mod_package = vpk.open(vpk_path, path_enc=None)
+        for file_path in mod_package:
+            if file_path in self.official_files:
+                print(f"\t* 冲突发现: {file_path}")
+                conflicts += 1
 
-        try:
-            mod_package = vpk.open(vpk_path, path_enc=None)
-            for file_path in mod_package:
-                if file_path in self.official_files:
-                    print(f"\t* 冲突发现: {file_path}")
-                    conflicts += 1
+        if conflicts > 0:
+            self.total_conflict += conflicts
+            self.conflict_files[vpk_path] = conflicts
+            print(f"\t* 发现 {conflicts} 个冲突")
 
-            if conflicts > 0:
-                self.total_conflict += conflicts
-                self.conflict_files[vpk_path] = conflicts
-                print(f"\t* 发现 {conflicts} 个冲突")
-
-        except Exception as e:
-            print(f"检查VPK失败: {vpk_path}\n错误信息: {str(e)}")
-            traceback.print_exc()
 
     def scan_mods_directory(self, search_root: str):
         """扫描MOD目录"""
