@@ -1,6 +1,25 @@
 import os
+import re
 import vpk
+import traceback
 from typing import List, Dict, Set
+
+
+class AddonInfo:
+    __slots__ = ("path", "title")
+
+    def __init__(self, pk: vpk.VPK):
+        self.path = pk.vpk_path
+        self.title = ""
+
+        if pk.tree is None:
+            return
+
+        if b'addoninfo.txt' in pk.tree:
+            info = pk.get_file(b'addoninfo.txt').read().decode("utf-8", errors="replace")
+            match = re.search(r'addontitle\s+"([^"]+)"', info, re.IGNORECASE)
+            if match:
+                self.title = match.group(1)
 
 
 class VPKConflictChecker:
@@ -14,9 +33,10 @@ class VPKConflictChecker:
 
         self.mod_dirs: List[str] = mod_dirs
         self.official_files: Set[bytes] = set()
-        self.conflict_files: Dict[str, int] = {}
+        self.conflict_files: Dict[AddonInfo, int] = {}
         self.total_addons = 0
         self.total_conflict = 0
+        self.mod_info: Dict[str, Dict[str, str]] = {}
 
     def should_file_check(self, filepath: bytes) -> bool:
         """检查文件路径是否需要被检测（bytes 类型比较）"""
@@ -52,18 +72,21 @@ class VPKConflictChecker:
 
     def check_custom_vpk(self, vpk_path: str):
         """检查单个MOD VPK文件"""
-        print(f"> 正在检查: {os.path.basename(vpk_path)}")
+
         self.total_addons += 1
         conflicts = 0
-        mod_package = vpk.open(vpk_path, path_enc=None)
-        for file_path in mod_package:
+        pk = vpk.open(vpk_path, path_enc=None, read_header_only=False)  # 除了header额外同时加载文件tree
+        info = AddonInfo(pk)
+        print(f"> 正在检查: {info.path} - {info.title}")
+        for file_path in pk:
+            # print(file_path)
             if file_path in self.official_files:
                 print(f"\t* 冲突发现: {file_path}")
                 conflicts += 1
 
         if conflicts > 0:
             self.total_conflict += conflicts
-            self.conflict_files[vpk_path] = conflicts
+            self.conflict_files[info] = conflicts
             print(f"\t* 发现 {conflicts} 个冲突")
 
     def scan_mods_directory(self, search_root: str):
@@ -93,8 +116,8 @@ class VPKConflictChecker:
 
         if self.conflict_files:
             print("冲突MOD列表:")
-            for path, count in self.conflict_files.items():
-                print(f"- [{count} 冲突] {path}")
+            for info, count in self.conflict_files.items():
+                print(f"- [{count} 冲突] {info.path} - {info.title}")
         else:
             print("未发现任何文件冲突!")
 
@@ -107,7 +130,7 @@ if __name__ == '__main__':
         "scripts/vscripts/",
         "scripts/melee/",
         # "scripts/",
-        # "models/",
+        "models/",
     ]
 
     MOD_DIRS = [
