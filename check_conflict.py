@@ -27,14 +27,14 @@ class VPKConflictChecker:
         print("--------------------------------------------------------------")
         print(f"扫描官方VPK: {vpk_path}")
         package = vpk.open(vpk_path, path_enc=None)
-        new_files = []
+        new_files = 0
 
         for file_path in package:
             if file_path not in self.official_files and self.should_file_check(file_path):
                 self.official_files.add(file_path)
-                new_files.append(file_path)
+                new_files += 1
                 print(f"\t{file_path}")
-        print(f"\t发现 {len(new_files)} 个需要监控的新文件")
+        print(f"\t发现 {new_files} 个需要监控的新文件")
 
     def scan_official_vpk_dir(self, search_root: str):
         """扫描官方VPK目录结构"""
@@ -89,10 +89,10 @@ class VPKConflictChecker:
         print(f"官方文件库: {len(self.official_files)} 个监控文件")
         print(f"扫描MOD数量: {self.total_addons} 个")
         print(f"发现冲突MOD: {len(self.conflict_files)} 个")
-        print(f"总冲突文件: {self.total_conflict} 个\n")
+        print(f"总冲突数量: {self.total_conflict} 个\n")
 
         if self.conflict_files:
-            print("冲突文件列表:")
+            print("冲突MOD列表:")
             for path, count in self.conflict_files.items():
                 print(f"- [{count} 冲突] {path}")
         else:
